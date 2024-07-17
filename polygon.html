@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Number Click Challenge</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/d3-delaunay.v6.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+        }
+		#game-container {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			width: 100%;
+			max-width: 1200px; /* Increased from previous value */
+			margin: 0 auto;
+			padding: 10px;
+		}
+		#game-area {
+			width: 90vmin;
+			height: 90vmin;
+			max-width: 1200px;
+			max-height: 1200px;
+			border: 2px solid #000;
+		}
+        #controls {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        #buttons {
+            display: flex;
+            flex-direction: column;
+        }
+        .game-button {
+            margin-bottom: 5px;
+            padding: 5px 10px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        #timer {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        #next-number {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            display: none;
+        }
+        #leaderboard {
+            margin-top: 10px;
+            width: 100%;
+            max-width: 300px;
+        }
+        #leaderboard h3 {
+            margin-top: 0;
+        }
+        #rules-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            display: none;
+            z-index: 1000;
+            max-width: 80%;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+        #message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            display: none;
+            z-index: 1000;
+            text-align: center;
+        }
+		@media (min-width: 1300px) {
+			#game-container {
+				flex-direction: row;
+				justify-content: center;
+				align-items: flex-start;
+			}
+			#controls {
+				flex-direction: column;
+				width: auto;
+				margin-right: 20px;
+			}
+			#leaderboard {
+				margin-top: 0;
+				margin-left: 20px;
+			}
+		}
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="controls">
+            <div id="buttons">
+                <button class="game-button" id="restart">Restart</button>
+                <button class="game-button" id="pause-resume">Pause</button>
+                <button class="game-button" id="hint">Hint</button>
+                <button class="game-button" id="next-number-btn">Next Number</button>
+                <button class="game-button" id="rules">Rules</button>
+            </div>
+            <div id="timer">Time: 0:00</div>
+        </div>
+        <svg id="game-area"></svg>
+        <div id="leaderboard">
+            <h3>Leaderboard</h3>
+            <ol id="leaderboard-list"></ol>
+        </div>
+    </div>
+    <div id="next-number"></div>
+    <div id="message"></div>
+    <div id="rules-popup">
+        <h2>Game Rules</h2>
+        <p>Click on the numbers in ascending order as quickly as possible. The game ends when you reach 100 or time runs out (20 minutes).</p>
+        <p>Penalties:</p>
+        <ul>
+            <li>Using "Hint": +5 seconds</li>
+            <li>Using "Next Number": +1 second</li>
+        </ul>
+        <p>If the time limit is reached, the game is over, and you will not make it to the leaderboard.</p>
+        <button id="close-rules">Close</button>
+    </div>
+
+    <script>
+		const width = 1200;  // Doubled from 600
+		const height = 1200; // Doubled from 600
+        const padding = 120;
+        let currentNumber = 1;
+        let startTime;
+        let timerInterval;
+        let timeoutId;
+        let isPaused = false;
+        let pauseStartTime;
+        let totalPausedTime = 0;
+        let hintCount = 0;
+        let nextNumberCount = 0;
+        const timeLimit = 20 * 60 * 1000; // 20 minutes in milliseconds
+        let leaderboard = [
+            { name: "Alice", time: 600 },
+            { name: "Bob", time: 750 },
+            { name: "Charlie", time: 900 },
+            { name: "David", time: 1050 },
+            { name: "Eve", time: 1200 }
+        ];
+
+		function initGame() {
+			const gameArea = d3.select("#game-area");
+			const timerElement = document.getElementById('timer');
+			const messageElement = document.getElementById('message');
+			const leaderboardList = document.getElementById('leaderboard-list');
+
+			currentNumber = 1;
+			hintCount = 0;
+			nextNumberCount = 0;
+			totalPausedTime = 0;
+			isPaused = false;
+			document.getElementById('pause-resume').textContent = 'Pause';
+
+			gameArea.selectAll("*").remove();
+			createPolygons(gameArea);
+			displayLeaderboard(leaderboardList);
+			
+			resetTimer(); // Reset the timer to 0
+			startTimer(timerElement);
+			startTimeout();
+		}
+
+		function createPolygons(gameArea) {
+			const svgWidth = 1200;
+			const svgHeight = 1200;
+			const adjustedPadding = Math.min(padding, svgWidth * 0.1, svgHeight * 0.1);
+
+			gameArea.attr("width", svgWidth)
+				   .attr("height", svgHeight)
+				   .attr("viewBox", `0 0 ${svgWidth} ${svgHeight}`);
+
+			const points = d3.range(100).map(() => [
+				Math.random() * (svgWidth - 2 * adjustedPadding) + adjustedPadding,
+				Math.random() * (svgHeight - 2 * adjustedPadding) + adjustedPadding
+			]);
+			const delaunay = d3.Delaunay.from(points);
+			const voronoi = delaunay.voronoi([0, 0, svgWidth, svgHeight]);
+
+			const colors = d3.schemeCategory10;
+			const fonts = ['Arial', 'Verdana', 'Helvetica', 'Times New Roman', 'Courier'];
+
+			const polygons = gameArea.selectAll("g")
+				.data(points)
+				.enter().append("g")
+				.attr("class", "polygon-group")
+				.on("click", (event, d) => handleClick(event, d, points.indexOf(d)));
+
+			polygons.append("path")
+				.attr("d", (d, i) => voronoi.renderCell(i))
+				.attr("fill", (d, i) => colors[i % colors.length])
+				.attr("stroke", "#fff")
+				.attr("class", "polygon");
+
+			polygons.append("text")
+				.attr("x", (d, i) => {
+					const cell = voronoi.cellPolygon(i);
+					return cell.reduce((acc, point) => acc + point[0], 0) / cell.length;
+				})
+				.attr("y", (d, i) => {
+					const cell = voronoi.cellPolygon(i);
+					return cell.reduce((acc, point) => acc + point[1], 0) / cell.length;
+				})
+				.attr("dy", "0.35em")
+				.attr("text-anchor", "middle")
+				.text((d, i) => i + 1)
+				.attr("fill", (d, i) => getContrastColor(colors[i % colors.length]))
+				.style("font-size", `${Math.min(svgWidth, svgHeight) * 0.02}px`)
+				.style("font-family", () => fonts[Math.floor(Math.random() * fonts.length)])
+				.style("font-weight", "bold")
+				.attr("class", "polygon-text")
+				.style("pointer-events", "none");
+		}
+
+        function getContrastColor(bgColor) {
+            const color = d3.color(bgColor);
+            const luminance = (0.299 * color.r + 0.587 * color.g + 0.114 * color.b) / 255;
+            return luminance > 0.5 ? "#000000" : "#ffffff";
+        }
+
+		function handleClick(event, d, i) {
+			if (!isPaused) {
+				if (i + 1 === currentNumber) {
+					const group = d3.select(event.currentTarget);
+					group.select("path").style("opacity", 0);
+					group.select("text").style("opacity", 0);
+					currentNumber++;
+
+					if (currentNumber > 100) {
+						endGame(true);
+					}
+				} else {
+					const path = d3.select(event.currentTarget).select("path");
+					const originalColor = path.attr("fill");
+					path.attr("fill", "red")
+						.transition()
+						.duration(300)
+						.attr("fill", originalColor);
+				}
+			}
+		}
+
+		function startTimer(timerElement) {
+			startTime = Date.now();
+			timerInterval = setInterval(() => {
+				if (!isPaused) {
+					const elapsedTime = Math.floor((Date.now() - startTime - totalPausedTime) / 1000);
+					const minutes = Math.floor(elapsedTime / 60);
+					const seconds = elapsedTime % 60;
+					timerElement.textContent = `Time: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+					// Check if time limit is reached
+					if (elapsedTime >= timeLimit / 1000) {
+						endGame(false);
+					}
+				}
+			}, 1000);
+		}
+		
+		function resetTimer() {
+			clearInterval(timerInterval);
+			const timerElement = document.getElementById('timer');
+			timerElement.textContent = 'Time: 0:00';
+		}
+		
+		function startTimeout() {
+			timeoutId = setTimeout(() => {
+				if (!isPaused) {
+					endGame(false);
+				}
+			}, timeLimit);
+		}
+
+		function endGame(completed) {
+		    if (isPaused) {
+				return; // Don't end the game if it's paused
+			}
+
+			clearInterval(timerInterval);
+			clearTimeout(timeoutId);
+			const finalTime = Math.floor((Date.now() - startTime - totalPausedTime) / 1000) + hintCount * 5 + nextNumberCount;
+			let message = completed
+				? `Congratulations! You completed the challenge in ${formatTime(finalTime)}.`
+				: "Sorry, you have run out of time.";
+
+			if (completed) {
+				const leaderboardPosition = getLeaderboardPosition(finalTime);
+				if (leaderboardPosition <= 5) {
+					const playerName = prompt("You made it to the leaderboard! Enter your name:");
+					updateLeaderboard(playerName, finalTime);
+					message += ` You've reached position ${leaderboardPosition} on the leaderboard!`;
+				} else {
+					message += " Unfortunately, you didn't make it to the leaderboard. Try again next time!";
+				}
+			}
+
+			resetTimer(); // Reset the timer to 0
+
+			const messageElement = document.getElementById('message');
+			messageElement.innerHTML = message + '<br><button id="restart-button">Restart</button>';
+			messageElement.style.display = 'block';
+
+			document.getElementById('restart-button').addEventListener('click', () => {
+				messageElement.style.display = 'none';
+				initGame();
+			});
+		}
+
+        function getLeaderboardPosition(time) {
+            return leaderboard.findIndex(entry => time < entry.time) + 1;
+        }
+
+        function updateLeaderboard(name, time) {
+            leaderboard.push({ name, time });
+            leaderboard.sort((a, b) => a.time - b.time);
+            leaderboard = leaderboard.slice(0, 5);
+            displayLeaderboard(document.getElementById('leaderboard-list'));
+        }
+
+        function displayLeaderboard(leaderboardList) {
+            leaderboardList.innerHTML = '';
+            leaderboard.forEach(entry => {
+                const li = document.createElement('li');
+                li.textContent = `${entry.name}: ${formatTime(entry.time)}`;
+                leaderboardList.appendChild(li);
+            });
+        }
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+
+        function showHint() {
+            if (!isPaused) {
+                hintCount++;
+                const nextPolygon = d3.select("#game-area").selectAll("path").filter((d, i) => i + 1 === currentNumber);
+                if (!nextPolygon.empty()) {
+                    const originalColor = nextPolygon.attr("fill");
+                    nextPolygon.attr("fill", "green")
+                        .transition()
+                        .duration(2000)
+                        .attr("fill", originalColor);
+                }
+            }
+        }
+
+        function showNextNumber() {
+            if (!isPaused) {
+                nextNumberCount++;
+                const nextNumberElement = document.getElementById('next-number');
+                nextNumberElement.textContent = `Next number: ${currentNumber}`;
+                nextNumberElement.style.display = 'block';
+                setTimeout(() => {
+                    nextNumberElement.style.display = 'none';
+                }, 2000);
+            }
+        }
+
+		function togglePause() {
+			isPaused = !isPaused;
+			const pauseResumeButton = document.getElementById('pause-resume');
+			if (isPaused) {
+				pauseStartTime = Date.now();
+				pauseResumeButton.textContent = 'Resume';
+				clearTimeout(timeoutId); // Clear the timeout when paused
+			} else {
+				totalPausedTime += Date.now() - pauseStartTime;
+				pauseResumeButton.textContent = 'Pause';
+				const remainingTime = timeLimit - (Date.now() - startTime - totalPausedTime);
+				timeoutId = setTimeout(() => endGame(false), remainingTime);
+			}
+		}
+
+        function showRules() {
+            if (!isPaused) {
+                togglePause();
+            }
+            document.getElementById('rules-popup').style.display = 'block';
+        }
+
+        function closeRules() {
+            document.getElementById('rules-popup').style.display = 'none';
+            if (isPaused) {
+                togglePause();
+            }
+        }
+
+        // Initialize the game when the DOM is fully loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeGameAndListeners);
+        } else {
+            initializeGameAndListeners();
+        }
+
+        function initializeGameAndListeners() {
+            initGame();
+            document.getElementById('restart').addEventListener('click', initGame);
+            document.getElementById('pause-resume').addEventListener('click', togglePause);
+            document.getElementById('hint').addEventListener('click', showHint);
+            document.getElementById('next-number-btn').addEventListener('click', showNextNumber);
+            document.getElementById('rules').addEventListener('click', showRules);
+            document.getElementById('close-rules').addEventListener('click', closeRules);
+        }
+		
+		window.addEventListener('resize', () => {
+			const gameArea = d3.select("#game-area");
+			gameArea.selectAll("*").remove();
+			createPolygons(gameArea);
+		});
+		document.addEventListener('DOMContentLoaded', initGame);
+    </script>
+</body>
+</html>
