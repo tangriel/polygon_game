@@ -6,117 +6,193 @@
     <title>Number Click Challenge</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://d3js.org/d3-delaunay.v6.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background-color: #f0f0f0;
-        }
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			margin: 0;
+			padding: 0;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			min-height: 100vh;
+			background-color: #f0f0f0;
+			overflow: hidden;
+		}
+
 		#game-container {
 			display: flex;
 			flex-direction: column;
 			align-items: center;
 			width: 100%;
-			max-width: 1200px; /* Increased from previous value */
+			max-width: 1200px;
 			margin: 0 auto;
 			padding: 10px;
 		}
-		#game-area {
+
+		#game-area-container {
+			position: relative;
 			width: 90vmin;
 			height: 90vmin;
 			max-width: 1200px;
 			max-height: 1200px;
-			border: 2px solid #000;
 		}
-        #controls {
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
-            margin-bottom: 10px;
-        }
-        #buttons {
-            display: flex;
-            flex-direction: column;
-        }
-        .game-button {
-            margin-bottom: 5px;
-            padding: 5px 10px;
-            font-size: 14px;
-            cursor: pointer;
-        }
-        #timer {
-            font-size: 18px;
-            font-weight: bold;
-        }
-        #next-number {
-            position: absolute;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-            box-shadow: 0 0 5px rgba(0,0,0,0.3);
-            display: none;
-        }
-        #leaderboard {
-            margin-top: 10px;
-            width: 100%;
-            max-width: 300px;
-        }
-        #leaderboard h3 {
-            margin-top: 0;
-        }
-        #rules-popup {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
-            display: none;
-            z-index: 1000;
-            max-width: 80%;
-            max-height: 80%;
-            overflow-y: auto;
-        }
-        #message {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
-            display: none;
-            z-index: 1000;
-            text-align: center;
-        }
+
+		#game-area {
+			width: 100%;
+			height: 100%;
+		}
+
+		#controls {
+			display: flex;
+			justify-content: space-between;
+			width: 100%;
+			margin-bottom: 10px;
+		}
+
+		#buttons {
+			display: flex;
+			flex-direction: column;
+		}
+
+		.game-button {
+			margin-bottom: 5px;
+			padding: 5px 10px;
+			font-size: 14px;
+			cursor: pointer;
+		}
+
+		#timer {
+			font-size: 18px;
+			font-weight: bold;
+		}
+
+		#next-number {
+			position: absolute;
+			top: 10px;
+			left: 50%;
+			transform: translateX(-50%);
+			background-color: white;
+			padding: 5px 10px;
+			border-radius: 5px;
+			box-shadow: 0 0 5px rgba(0,0,0,0.3);
+			display: none;
+		}
+
+		#leaderboard {
+			margin-top: 10px;
+			width: 100%;
+			max-width: 300px;
+		}
+
+		#leaderboard h3 {
+			margin-top: 0;
+		}
+
+		#rules-popup {
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			background-color: white;
+			padding: 20px;
+			border-radius: 10px;
+			box-shadow: 0 0 10px rgba(0,0,0,0.5);
+			z-index: 1000;
+			max-width: 80%;
+			max-height: 80%;
+			overflow-y: auto;
+			display: none;
+		}
+		
+		#rules-overlay {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0, 0, 0, 0.5);
+			z-index: 999;
+			display: none;
+		}
+
+		#message {
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			background-color: white;
+			padding: 20px;
+			border-radius: 10px;
+			box-shadow: 0 0 10px rgba(0,0,0,0.5);
+			z-index: 1000;
+			text-align: center;
+			display: none;
+		}
+		
+		#message-overlay {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0, 0, 0, 0.5);
+			z-index: 999;
+			display: none;
+		}
+
+		#pause-overlay {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(240, 240, 240);
+			display: none;
+			justify-content: center;
+			align-items: center;
+			z-index: 1000;
+			font-size: 48px;
+			font-weight: bold;
+			color: black;
+		}
+
+		/* Prevent text selection and pointer events */
+		.no-select {
+			user-select: none;
+			-webkit-user-select: none;
+			-moz-user-select: none;
+			-ms-user-select: none;
+			pointer-events: none;
+		}
+
+		/* Allow pointer events on game area paths */
+		#game-area path {
+			pointer-events: all;
+		}
+		
+		body.iron-man {
+			border: 5px solid red;
+		}
+
 		@media (min-width: 1300px) {
 			#game-container {
 				flex-direction: row;
 				justify-content: center;
 				align-items: flex-start;
 			}
+
 			#controls {
 				flex-direction: column;
 				width: auto;
 				margin-right: 20px;
 			}
+
 			#leaderboard {
 				margin-top: 0;
 				margin-left: 20px;
 			}
 		}
-    </style>
+	</style>
 </head>
 <body>
     <div id="game-container">
@@ -127,97 +203,184 @@
                 <button class="game-button" id="hint">Hint</button>
                 <button class="game-button" id="next-number-btn">Next Number</button>
                 <button class="game-button" id="rules">Rules</button>
+				<select id="polygon-count" class="game-button">
+					<option value="20">20 Polygons</option>
+					<option value="30">30 Polygons</option>
+					<option value="40">40 Polygons</option>
+					<option value="50">50 Polygons</option>
+					<option value="60">60 Polygons</option>
+					<option value="70">70 Polygons</option>
+					<option value="80">80 Polygons</option>
+					<option value="90">90 Polygons</option>
+					<option value="100" selected>100 Polygons</option>
+				</select>
+				<select id="difficulty-level" class="game-button">
+					<option value="easy">Easy</option>
+					<option value="medium" selected>Medium</option>
+					<option value="hard">Hard</option>
+					<option value="iron-man">Iron Man</option>
+				</select>
             </div>
             <div id="timer">Time: 0:00</div>
         </div>
-        <svg id="game-area"></svg>
+		<div id="game-area-container">
+			<svg id="game-area" class="no-select"></svg>
+			<div id="pause-overlay">Game Paused</div>
+		</div>
         <div id="leaderboard">
             <h3>Leaderboard</h3>
             <ol id="leaderboard-list"></ol>
         </div>
     </div>
     <div id="next-number"></div>
+	<div id="message-overlay"></div>
     <div id="message"></div>
-    <div id="rules-popup">
-        <h2>Game Rules</h2>
-        <p>Click on the numbers in ascending order as quickly as possible. The game ends when you reach 100 or time runs out (20 minutes).</p>
-        <p>Penalties:</p>
-        <ul>
-            <li>Using "Hint": +5 seconds</li>
-            <li>Using "Next Number": +1 second</li>
-        </ul>
-        <p>If the time limit is reached, the game is over, and you will not make it to the leaderboard.</p>
-        <button id="close-rules">Close</button>
-    </div>
+	<div id="rules-overlay"></div>
+	<div id="rules-popup">
+		<h2>Game Rules</h2>
+		<p>Click on the numbers in ascending order as quickly as possible. The game ends when you reach the highest number or time runs out (20 minutes).</p>
+		<p>Difficulty Levels:</p>
+		<ul>
+			<li><strong>Easy:</strong> No constraints on Hint and Next Number usage.</li>
+			<li><strong>Medium:</strong> Limited uses of Hint and Next Number (1 use per 20 polygons).</li>
+			<li><strong>Hard:</strong> Hint and Next Number buttons are disabled.</li>
+			<li><strong>Iron Man:</strong> Hint and Next Number buttons are disabled. You lose if you click the wrong number and won't be added to the leaderboard.</li>
+		</ul>
+		<p>Hint and Next Number Cooldowns:</p>
+		<ul>
+			<li>1-20 numbers remaining: 5 seconds</li>
+			<li>21-30 numbers remaining: 10 seconds</li>
+			<li>31-40 numbers remaining: 20 seconds</li>
+			<li>41+ numbers remaining: 30 seconds</li>
+		</ul>
+		<p>Settings:</p>
+		<ul>
+			<li>Number of Polygons: You can choose between 20 and 100 polygons. Each setting has its own leaderboard.</li>
+		</ul>
+		<p>If the time limit is reached, the game is over, and you will not make it to the leaderboard.</p>
+		<button id="close-rules">Close</button>
+	</div>
 
-    <script>
-		const width = 1200;  // Doubled from 600
-		const height = 1200; // Doubled from 600
-        const padding = 120;
-        let currentNumber = 1;
-        let startTime;
-        let timerInterval;
-        let timeoutId;
-        let isPaused = false;
-        let pauseStartTime;
-        let totalPausedTime = 0;
-        let hintCount = 0;
-        let nextNumberCount = 0;
-        const timeLimit = 20 * 60 * 1000; // 20 minutes in milliseconds
-        let leaderboard = [
-            { name: "Alice", time: 600 },
-            { name: "Bob", time: 750 },
-            { name: "Charlie", time: 900 },
-            { name: "David", time: 1050 },
-            { name: "Eve", time: 1200 }
-        ];
+	<script>
+		// Constants
+		const SVG_WIDTH = 1200;
+		const SVG_HEIGHT = 1200;
+		const TIME_LIMIT = 20 * 60 * 1000; // 20 minutes in milliseconds
+
+		// Game state variables
+		let currentNumber = 1;
+		let startTime;
+		let timerInterval;
+		let timeoutId;
+		let isPaused = false;
+		let pauseStartTime;
+		let totalPausedTime = 0;
+		let polygonCount = 100;
+		let leaderboards = {};
+		let difficultyLevel = 'medium';
+		let hintCount = 0;
+		let nextNumberCount = 0;
+		let hintDisabledUntil = 0;
+		let nextNumberDisabledUntil = 0;
+
+		function createNumberImage(number, color, size) {
+			const canvas = document.createElement('canvas');
+			canvas.width = size;
+			canvas.height = size;
+			const ctx = canvas.getContext('2d');
+			ctx.fillStyle = color;
+			ctx.font = `bold ${Math.floor(size * 0.6)}px Arial`;
+			ctx.textAlign = 'center';
+			ctx.textBaseline = 'middle';
+			ctx.fillText(number, size / 2, size / 2);
+			return canvas.toDataURL();
+		}
 
 		function initGame() {
 			const gameArea = d3.select("#game-area");
-			const timerElement = document.getElementById('timer');
-			const messageElement = document.getElementById('message');
 			const leaderboardList = document.getElementById('leaderboard-list');
 
-			currentNumber = 1;
-			hintCount = 0;
-			nextNumberCount = 0;
-			totalPausedTime = 0;
-			isPaused = false;
-			document.getElementById('pause-resume').textContent = 'Pause';
-
+			polygonCount = parseInt(document.getElementById('polygon-count').value);
+			if (!leaderboards[polygonCount]) {
+				leaderboards[polygonCount] = [
+					{ name: `Alice${polygonCount}`, time: 600 },
+					{ name: `Bob${polygonCount}`, time: 750 },
+					{ name: `Charlie${polygonCount}`, time: 900 },
+					{ name: `David${polygonCount}`, time: 1050 },
+					{ name: `Eve${polygonCount}`, time: 1200 }
+				];
+			}
+			
+			resetGameState();
+			adjustContainerSize();
 			gameArea.selectAll("*").remove();
 			createPolygons(gameArea);
 			displayLeaderboard(leaderboardList);
+			closeRules();
 			
-			resetTimer(); // Reset the timer to 0
-			startTimer(timerElement);
+			startTimer(document.getElementById('timer'));
 			startTimeout();
 		}
 
+		function resetGameState() {
+			currentNumber = 1;
+			totalPausedTime = 0;
+			isPaused = false;
+			document.getElementById('pause-resume').textContent = 'Pause';
+			document.getElementById('pause-overlay').style.display = 'none';
+			
+			// Reset visibility of all polygons
+			d3.selectAll(".polygon-group").selectAll("path, image").style("opacity", 1);
+			
+			hintCount = 0;
+			nextNumberCount = 0;
+			hintDisabledUntil = 0;
+			nextNumberDisabledUntil = 0;
+			updateButtonState();
+		}
+		
+		function updateButtonState() {
+			const now = Date.now();
+			const hintButton = document.getElementById('hint');
+			const nextNumberButton = document.getElementById('next-number-btn');
+			const remainingNumbers = polygonCount - currentNumber + 1;
+
+			hintButton.disabled = (difficultyLevel === 'hard' || difficultyLevel === 'iron-man' ||
+				now < hintDisabledUntil || (difficultyLevel === 'medium' && hintCount >= Math.floor(polygonCount / 20)));
+			nextNumberButton.disabled = (difficultyLevel === 'hard' || difficultyLevel === 'iron-man' ||
+				now < nextNumberDisabledUntil || (difficultyLevel === 'medium' && nextNumberCount >= Math.floor(polygonCount / 20)));
+
+			if (difficultyLevel === 'medium') {
+				hintButton.textContent = `Hint (${Math.floor(polygonCount / 20) - hintCount} left)`;
+				nextNumberButton.textContent = `Next Number (${Math.floor(polygonCount / 20) - nextNumberCount} left)`;
+			} else {
+				hintButton.textContent = 'Hint';
+				nextNumberButton.textContent = 'Next Number';
+			}
+		}
+
 		function createPolygons(gameArea) {
-			const svgWidth = 1200;
-			const svgHeight = 1200;
-			const adjustedPadding = Math.min(padding, svgWidth * 0.1, svgHeight * 0.1);
+			const adjustedPadding = Math.min(120, SVG_WIDTH * 0.1, SVG_HEIGHT * 0.1);
 
-			gameArea.attr("width", svgWidth)
-				   .attr("height", svgHeight)
-				   .attr("viewBox", `0 0 ${svgWidth} ${svgHeight}`);
+			gameArea.attr("width", "100%")
+				   .attr("height", "100%")
+				   .attr("viewBox", `0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`)
+				   .style("display", "block");
 
-			const points = d3.range(100).map(() => [
-				Math.random() * (svgWidth - 2 * adjustedPadding) + adjustedPadding,
-				Math.random() * (svgHeight - 2 * adjustedPadding) + adjustedPadding
+			const points = d3.range(polygonCount).map(() => [
+				Math.random() * (SVG_WIDTH - 2 * adjustedPadding) + adjustedPadding,
+				Math.random() * (SVG_HEIGHT - 2 * adjustedPadding) + adjustedPadding
 			]);
 			const delaunay = d3.Delaunay.from(points);
-			const voronoi = delaunay.voronoi([0, 0, svgWidth, svgHeight]);
+			const voronoi = delaunay.voronoi([0, 0, SVG_WIDTH, SVG_HEIGHT]);
 
 			const colors = d3.schemeCategory10;
-			const fonts = ['Arial', 'Verdana', 'Helvetica', 'Times New Roman', 'Courier'];
 
 			const polygons = gameArea.selectAll("g")
 				.data(points)
 				.enter().append("g")
 				.attr("class", "polygon-group")
-				.on("click", (event, d) => handleClick(event, d, points.indexOf(d)));
+				.on("click", handleClick);
 
 			polygons.append("path")
 				.attr("d", (d, i) => voronoi.renderCell(i))
@@ -225,52 +388,71 @@
 				.attr("stroke", "#fff")
 				.attr("class", "polygon");
 
-			polygons.append("text")
-				.attr("x", (d, i) => {
-					const cell = voronoi.cellPolygon(i);
-					return cell.reduce((acc, point) => acc + point[0], 0) / cell.length;
-				})
-				.attr("y", (d, i) => {
-					const cell = voronoi.cellPolygon(i);
-					return cell.reduce((acc, point) => acc + point[1], 0) / cell.length;
-				})
-				.attr("dy", "0.35em")
-				.attr("text-anchor", "middle")
-				.text((d, i) => i + 1)
-				.attr("fill", (d, i) => getContrastColor(colors[i % colors.length]))
-				.style("font-size", `${Math.min(svgWidth, svgHeight) * 0.02}px`)
-				.style("font-family", () => fonts[Math.floor(Math.random() * fonts.length)])
-				.style("font-weight", "bold")
-				.attr("class", "polygon-text")
-				.style("pointer-events", "none");
+			polygons.each(function(d, i) {
+				const cell = voronoi.cellPolygon(i);
+				if (!cell || cell.length < 3) return;
+				
+				const [minX, minY, maxX, maxY] = getBoundingBox(cell);
+				const size = Math.min(maxX - minX, maxY - minY);
+				const imageSize = Math.max(Math.min(size / 2, 100), 20);
+
+				const centerX = (minX + maxX) / 2;
+				const centerY = (minY + maxY) / 2;
+
+				const imageHref = createNumberImage(i + 1, getContrastColor(colors[i % colors.length]), imageSize);
+
+				d3.select(this).append("image")
+					.attr("x", centerX - imageSize / 2)
+					.attr("y", centerY - imageSize / 2)
+					.attr("width", imageSize)
+					.attr("height", imageSize)
+					.attr("href", imageHref)
+					.style("pointer-events", "none");
+			});
 		}
 
-        function getContrastColor(bgColor) {
-            const color = d3.color(bgColor);
-            const luminance = (0.299 * color.r + 0.587 * color.g + 0.114 * color.b) / 255;
-            return luminance > 0.5 ? "#000000" : "#ffffff";
-        }
+		function getBoundingBox(points) {
+			const xs = points.map(p => p[0]);
+			const ys = points.map(p => p[1]);
+			return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+		}
 
-		function handleClick(event, d, i) {
-			if (!isPaused) {
-				if (i + 1 === currentNumber) {
-					const group = d3.select(event.currentTarget);
-					group.select("path").style("opacity", 0);
-					group.select("text").style("opacity", 0);
-					currentNumber++;
+		function getContrastColor(bgColor) {
+			const color = d3.color(bgColor);
+			const luminance = (0.299 * color.r + 0.587 * color.g + 0.114 * color.b) / 255;
+			return luminance > 0.5 ? "#000000" : "#ffffff";
+		}
 
-					if (currentNumber > 100) {
-						endGame(true);
-					}
+		function handleClick(event, d) {
+			if (isPaused) return;
+			
+			const clickedGroup = d3.select(this);
+			const clickedNumber = Array.from(clickedGroup.node().parentNode.children).indexOf(clickedGroup.node()) + 1;
+			
+			if (clickedNumber === currentNumber) {
+				clickedGroup.select("path").style("opacity", 0);
+				clickedGroup.select("image").style("opacity", 0);
+				currentNumber++;
+
+				if (currentNumber > polygonCount) {
+					endGame(true);
 				} else {
-					const path = d3.select(event.currentTarget).select("path");
-					const originalColor = path.attr("fill");
-					path.attr("fill", "red")
-						.transition()
-						.duration(300)
-						.attr("fill", originalColor);
+					updateButtonState();
+				}
+			} else {
+				flashPolygon(clickedGroup.select("path"), "red", 300);
+				if (difficultyLevel === 'iron-man') {
+					endGame(false, true);
 				}
 			}
+		}
+
+		function flashPolygon(polygon, color, duration) {
+			const originalColor = polygon.attr("fill");
+			polygon.attr("fill", color)
+				.transition()
+				.duration(duration)
+				.attr("fill", originalColor);
 		}
 
 		function startTimer(timerElement) {
@@ -278,171 +460,218 @@
 			timerInterval = setInterval(() => {
 				if (!isPaused) {
 					const elapsedTime = Math.floor((Date.now() - startTime - totalPausedTime) / 1000);
-					const minutes = Math.floor(elapsedTime / 60);
-					const seconds = elapsedTime % 60;
-					timerElement.textContent = `Time: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+					const totalTime = elapsedTime;
+					timerElement.textContent = `Time: ${formatTime(totalTime)}`;
 
-					// Check if time limit is reached
-					if (elapsedTime >= timeLimit / 1000) {
+					if (totalTime >= TIME_LIMIT / 1000) {
 						endGame(false);
 					}
 				}
 			}, 1000);
 		}
-		
-		function resetTimer() {
-			clearInterval(timerInterval);
-			const timerElement = document.getElementById('timer');
-			timerElement.textContent = 'Time: 0:00';
-		}
-		
+
 		function startTimeout() {
 			timeoutId = setTimeout(() => {
 				if (!isPaused) {
 					endGame(false);
 				}
-			}, timeLimit);
+			}, TIME_LIMIT);
 		}
 
-		function endGame(completed) {
-		    if (isPaused) {
-				return; // Don't end the game if it's paused
-			}
+		function endGame(completed, ironManFail = false) {
+			if (isPaused) return;
 
 			clearInterval(timerInterval);
 			clearTimeout(timeoutId);
-			const finalTime = Math.floor((Date.now() - startTime - totalPausedTime) / 1000) + hintCount * 5 + nextNumberCount;
+			const elapsedTime = Math.floor((Date.now() - startTime - totalPausedTime) / 1000);
+			const finalTime = elapsedTime;
 			let message = completed
 				? `Congratulations! You completed the challenge in ${formatTime(finalTime)}.`
-				: "Sorry, you have run out of time.";
+				: ironManFail
+					? "Game Over! You clicked the wrong number in Iron Man mode."
+					: "Sorry, you have run out of time.";
 
-			if (completed) {
+			if (completed || (difficultyLevel !== 'iron-man' && !ironManFail)) {
 				const leaderboardPosition = getLeaderboardPosition(finalTime);
 				if (leaderboardPosition <= 5) {
 					const playerName = prompt("You made it to the leaderboard! Enter your name:");
 					updateLeaderboard(playerName, finalTime);
 					message += ` You've reached position ${leaderboardPosition} on the leaderboard!`;
-				} else {
+				} else if (completed) {
 					message += " Unfortunately, you didn't make it to the leaderboard. Try again next time!";
 				}
 			}
 
-			resetTimer(); // Reset the timer to 0
+			resetTimer();
 
 			const messageElement = document.getElementById('message');
+			const messageOverlay = document.getElementById('message-overlay');
 			messageElement.innerHTML = message + '<br><button id="restart-button">Restart</button>';
 			messageElement.style.display = 'block';
+			messageOverlay.style.display = 'block';
 
 			document.getElementById('restart-button').addEventListener('click', () => {
 				messageElement.style.display = 'none';
+				messageOverlay.style.display = 'none';
 				initGame();
 			});
 		}
 
-        function getLeaderboardPosition(time) {
-            return leaderboard.findIndex(entry => time < entry.time) + 1;
-        }
+		function getLeaderboardPosition(time) {
+			return leaderboards[polygonCount].findIndex(entry => time < entry.time) + 1;
+		}
 
-        function updateLeaderboard(name, time) {
-            leaderboard.push({ name, time });
-            leaderboard.sort((a, b) => a.time - b.time);
-            leaderboard = leaderboard.slice(0, 5);
-            displayLeaderboard(document.getElementById('leaderboard-list'));
-        }
+		function updateLeaderboard(name, time) {
+			leaderboards[polygonCount].push({ name, time });
+			leaderboards[polygonCount].sort((a, b) => a.time - b.time);
+			leaderboards[polygonCount] = leaderboards[polygonCount].slice(0, 5);
+			displayLeaderboard(document.getElementById('leaderboard-list'));
+		}
 
-        function displayLeaderboard(leaderboardList) {
-            leaderboardList.innerHTML = '';
-            leaderboard.forEach(entry => {
-                const li = document.createElement('li');
-                li.textContent = `${entry.name}: ${formatTime(entry.time)}`;
-                leaderboardList.appendChild(li);
-            });
-        }
+		function displayLeaderboard(leaderboardList) {
+			leaderboardList.innerHTML = '';
+			leaderboards[polygonCount].forEach(entry => {
+				const li = document.createElement('li');
+				li.textContent = `${entry.name}: ${formatTime(entry.time)}`;
+				leaderboardList.appendChild(li);
+			});
+		}
 
-        function formatTime(seconds) {
-            const minutes = Math.floor(seconds / 60);
-            const remainingSeconds = seconds % 60;
-            return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-        }
+		function formatTime(seconds) {
+			const minutes = Math.floor(seconds / 60);
+			const remainingSeconds = seconds % 60;
+			return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+		}
 
-        function showHint() {
-            if (!isPaused) {
-                hintCount++;
-                const nextPolygon = d3.select("#game-area").selectAll("path").filter((d, i) => i + 1 === currentNumber);
-                if (!nextPolygon.empty()) {
-                    const originalColor = nextPolygon.attr("fill");
-                    nextPolygon.attr("fill", "green")
-                        .transition()
-                        .duration(2000)
-                        .attr("fill", originalColor);
-                }
-            }
-        }
+		function showHint() {
+			if (isPaused || document.getElementById('hint').disabled) return;
+			
+			const now = Date.now();
+			const remainingNumbers = polygonCount - currentNumber + 1;
+			const disableDuration = Math.min(30, Math.max(5, Math.floor(remainingNumbers / 10) * 10)) * 1000;
+			
+			hintDisabledUntil = now + disableDuration;
+			hintCount++;
+			
+			const nextPolygon = d3.select("#game-area").selectAll("path").filter((d, i) => i + 1 === currentNumber);
+			if (!nextPolygon.empty()) {
+				flashPolygon(nextPolygon, "green", 2000);
+			}
+			
+			updateButtonState();
+		}
 
-        function showNextNumber() {
-            if (!isPaused) {
-                nextNumberCount++;
-                const nextNumberElement = document.getElementById('next-number');
-                nextNumberElement.textContent = `Next number: ${currentNumber}`;
-                nextNumberElement.style.display = 'block';
-                setTimeout(() => {
-                    nextNumberElement.style.display = 'none';
-                }, 2000);
-            }
-        }
+		function showNextNumber() {
+			if (isPaused || document.getElementById('next-number-btn').disabled) return;
+			
+			const now = Date.now();
+			const remainingNumbers = polygonCount - currentNumber + 1;
+			const disableDuration = Math.min(30, Math.max(5, Math.floor(remainingNumbers / 10) * 10)) * 1000;
+			
+			nextNumberDisabledUntil = now + disableDuration;
+			nextNumberCount++;
+			
+			const nextNumberElement = document.getElementById('next-number');
+			nextNumberElement.textContent = `Next number: ${currentNumber}`;
+			nextNumberElement.style.display = 'block';
+			setTimeout(() => {
+				nextNumberElement.style.display = 'none';
+			}, 2000);
+			
+			updateButtonState();
+		}
 
 		function togglePause() {
+			if (currentNumber > polygonCount) return;
+			
 			isPaused = !isPaused;
 			const pauseResumeButton = document.getElementById('pause-resume');
+			const pauseOverlay = document.getElementById('pause-overlay');
+			
 			if (isPaused) {
 				pauseStartTime = Date.now();
 				pauseResumeButton.textContent = 'Resume';
-				clearTimeout(timeoutId); // Clear the timeout when paused
+				clearTimeout(timeoutId);
+				pauseOverlay.style.display = 'flex';
 			} else {
 				totalPausedTime += Date.now() - pauseStartTime;
 				pauseResumeButton.textContent = 'Pause';
-				const remainingTime = timeLimit - (Date.now() - startTime - totalPausedTime);
+				const remainingTime = TIME_LIMIT - (Date.now() - startTime - totalPausedTime);
 				timeoutId = setTimeout(() => endGame(false), remainingTime);
+				pauseOverlay.style.display = 'none';
 			}
 		}
 
-        function showRules() {
-            if (!isPaused) {
-                togglePause();
-            }
-            document.getElementById('rules-popup').style.display = 'block';
-        }
+		function showRules() {
+			if (!isPaused) {
+				togglePause();
+			}
+			document.getElementById('rules-overlay').style.display = 'block';
+			document.getElementById('rules-popup').style.display = 'block';
+		}
 
-        function closeRules() {
-            document.getElementById('rules-popup').style.display = 'none';
-            if (isPaused) {
-                togglePause();
-            }
-        }
+		function closeRules() {
+			document.getElementById('rules-overlay').style.display = 'none';
+			document.getElementById('rules-popup').style.display = 'none';
+			if (isPaused) {
+				togglePause();
+			}
+		}
 
-        // Initialize the game when the DOM is fully loaded
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializeGameAndListeners);
-        } else {
-            initializeGameAndListeners();
-        }
+		function resetTimer() {
+			clearInterval(timerInterval);
+			document.getElementById('timer').textContent = 'Time: 0:00';
+		}
 
-        function initializeGameAndListeners() {
-            initGame();
-            document.getElementById('restart').addEventListener('click', initGame);
-            document.getElementById('pause-resume').addEventListener('click', togglePause);
-            document.getElementById('hint').addEventListener('click', showHint);
-            document.getElementById('next-number-btn').addEventListener('click', showNextNumber);
-            document.getElementById('rules').addEventListener('click', showRules);
-            document.getElementById('close-rules').addEventListener('click', closeRules);
-        }
-		
-		window.addEventListener('resize', () => {
-			const gameArea = d3.select("#game-area");
-			gameArea.selectAll("*").remove();
-			createPolygons(gameArea);
+		function adjustContainerSize() {
+			const container = document.getElementById('game-area-container');
+			const gameArea = document.getElementById('game-area');
+			const maxSize = Math.min(window.innerWidth, window.innerHeight) * 0.9;
+			
+			container.style.width = `${maxSize}px`;
+			container.style.height = `${maxSize}px`;
+			gameArea.setAttribute('viewBox', `0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`);
+			gameArea.style.width = '100%';
+			gameArea.style.height = '100%';
+		}
+
+		function initializeGameAndListeners() {
+			initGame();
+			document.getElementById('restart').addEventListener('click', initGame);
+			document.getElementById('pause-resume').addEventListener('click', togglePause);
+			document.getElementById('hint').addEventListener('click', showHint);
+			document.getElementById('next-number-btn').addEventListener('click', showNextNumber);
+			document.getElementById('rules').addEventListener('click', showRules);
+			document.getElementById('close-rules').addEventListener('click', closeRules);
+			document.getElementById('rules-overlay').addEventListener('click', closeRules);
+			document.getElementById('polygon-count').addEventListener('change', initGame);
+			window.addEventListener('resize', adjustContainerSize);
+			document.getElementById('difficulty-level').addEventListener('change', (e) => {
+				difficultyLevel = e.target.value;
+				document.body.classList.toggle('iron-man', difficultyLevel === 'iron-man');
+				initGame();
+			});
+			document.addEventListener('keydown', (e) => {
+				if (e.key === 'Escape' && document.getElementById('rules-popup').style.display === 'block') {
+					closeRules();
+				}
+			});
+			document.getElementById('message-overlay').addEventListener('click', (e) => {
+				if (e.target === document.getElementById('message-overlay')) {
+					document.getElementById('message').style.display = 'none';
+					document.getElementById('message-overlay').style.display = 'none';
+					initGame();
+				}
+			});
+		}
+
+		document.addEventListener('DOMContentLoaded', initializeGameAndListeners);
+
+		document.addEventListener('selectstart', function(e) {
+			if(e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+				e.preventDefault();
+			}
 		});
-		document.addEventListener('DOMContentLoaded', initGame);
-    </script>
+	</script>
 </body>
 </html>
