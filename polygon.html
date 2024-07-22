@@ -27,6 +27,50 @@
 			max-width: 1200px;
 			margin: 0 auto;
 			padding: 10px;
+			transition: all 0.3s ease;
+		}
+		
+		#game-container:fullscreen {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			background-color: #f0f0f0;
+		}
+		
+		#game-container:fullscreen #message,
+		#game-container:fullscreen #rules-popup,
+		#game-container:fullscreen #message-overlay,
+		#game-container:fullscreen #rules-overlay {
+			position: absolute;
+		}
+		
+		#fullscreen-popup {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0, 0, 0, 0.7);
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			z-index: 10000;
+		}
+
+		#fullscreen-popup-content {
+			background-color: white;
+			padding: 20px;
+			border-radius: 10px;
+			max-width: 80%;
+			max-height: 80%;
+			overflow-y: auto;
+			text-align: center;
+		}
+
+		#fullscreen-popup-content button {
+			margin: 10px;
+			padding: 5px 10px;
+			font-size: 16px;
 		}
 
 		#game-area-container {
@@ -59,6 +103,23 @@
 			padding: 5px 10px;
 			font-size: 14px;
 			cursor: pointer;
+			position: relative;
+			overflow: hidden;
+		}
+
+		.game-button::before {
+			content: '';
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: var(--progress, 0%);
+			height: 100%;
+			background-color: rgba(0, 0, 0, 0.1);
+			transition: width 0.1s linear;
+		}
+
+		.game-button:disabled {
+			cursor: not-allowed;
 		}
 
 		#timer {
@@ -88,7 +149,7 @@
 			margin-top: 0;
 		}
 
-		#rules-popup {
+		#message, #rules-popup {
 			position: fixed;
 			top: 50%;
 			left: 50%;
@@ -97,46 +158,22 @@
 			padding: 20px;
 			border-radius: 10px;
 			box-shadow: 0 0 10px rgba(0,0,0,0.5);
-			z-index: 1000;
+			z-index: 2000;
+			text-align: center;
+			display: none;
 			max-width: 80%;
 			max-height: 80%;
 			overflow-y: auto;
-			display: none;
-		}
-		
-		#rules-overlay {
-			position: fixed;
-			top: 0;
-			left: 0;
-			width: 100%;
-			height: 100%;
-			background-color: rgba(0, 0, 0, 0.5);
-			z-index: 999;
-			display: none;
 		}
 
-		#message {
-			position: fixed;
-			top: 50%;
-			left: 50%;
-			transform: translate(-50%, -50%);
-			background-color: white;
-			padding: 20px;
-			border-radius: 10px;
-			box-shadow: 0 0 10px rgba(0,0,0,0.5);
-			z-index: 1000;
-			text-align: center;
-			display: none;
-		}
-		
-		#message-overlay {
+		#message-overlay, #rules-overlay {
 			position: fixed;
 			top: 0;
 			left: 0;
 			width: 100%;
 			height: 100%;
 			background-color: rgba(0, 0, 0, 0.5);
-			z-index: 999;
+			z-index: 1999;
 			display: none;
 		}
 
@@ -198,10 +235,11 @@
     <div id="game-container">
         <div id="controls">
             <div id="buttons">
+				<button class="game-button" id="fullscreen">Fullscreen</button>
                 <button class="game-button" id="restart">Restart</button>
                 <button class="game-button" id="pause-resume">Pause</button>
-                <button class="game-button" id="hint">Hint</button>
-                <button class="game-button" id="next-number-btn">Next Number</button>
+				<button class="game-button" id="hint">Hint</button>
+				<button class="game-button" id="next-number-btn">Next Number</button>
                 <button class="game-button" id="rules">Rules</button>
 				<select id="polygon-count" class="game-button">
 					<option value="20">20 Polygons</option>
@@ -260,6 +298,9 @@
 		<p>If the time limit is reached, the game is over, and you will not make it to the leaderboard.</p>
 		<button id="close-rules">Close</button>
 	</div>
+	<div id="fullscreen-popup" style="display: none;">
+		<div id="fullscreen-popup-content"></div>
+	</div>
 
 	<script>
 		// Constants
@@ -295,6 +336,26 @@
 			ctx.fillText(number, size / 2, size / 2);
 			return canvas.toDataURL();
 		}
+		
+		function shuffleArray(array) {
+			for (let i = array.length - 1; i > 0; i--) {
+				const j = Math.floor(Math.random() * (i + 1));
+				[array[i], array[j]] = [array[j], array[i]];
+			}
+		}
+		
+		function getRandomColors(count) {
+			const baseColors = d3.schemeCategory10.slice();
+			let colors = [];
+			for (let i = 0; i < count; i++) {
+				if (i % baseColors.length === 0) {
+					shuffleArray(baseColors);
+				}
+				colors.push(baseColors[i % baseColors.length]);
+			}
+			shuffleArray(colors);
+			return colors;
+		}
 
 		function initGame() {
 			const gameArea = d3.select("#game-area");
@@ -317,9 +378,15 @@
 			createPolygons(gameArea);
 			displayLeaderboard(leaderboardList);
 			closeRules();
+			document.getElementById('fullscreen-popup').style.display = 'none';
 			
 			startTimer(document.getElementById('timer'));
 			startTimeout();
+
+			// Reset cooldown timers
+			hintDisabledUntil = 0;
+			nextNumberDisabledUntil = 0;
+			updateButtonState();
 		}
 
 		function resetGameState() {
@@ -345,18 +412,95 @@
 			const nextNumberButton = document.getElementById('next-number-btn');
 			const remainingNumbers = polygonCount - currentNumber + 1;
 
-			hintButton.disabled = (difficultyLevel === 'hard' || difficultyLevel === 'iron-man' ||
-				now < hintDisabledUntil || (difficultyLevel === 'medium' && hintCount >= Math.floor(polygonCount / 20)));
-			nextNumberButton.disabled = (difficultyLevel === 'hard' || difficultyLevel === 'iron-man' ||
-				now < nextNumberDisabledUntil || (difficultyLevel === 'medium' && nextNumberCount >= Math.floor(polygonCount / 20)));
+			updateButtonProgress(hintButton, now, hintDisabledUntil, 'Hint', hintCount);
+			updateButtonProgress(nextNumberButton, now, nextNumberDisabledUntil, 'Next Number', nextNumberCount);
+		}
+
+		function updateButtonProgress(button, now, disabledUntil, buttonText, count) {
+			const isDisabled = isPaused || difficultyLevel === 'hard' || difficultyLevel === 'iron-man' ||
+				now < disabledUntil || (difficultyLevel === 'medium' && count >= Math.floor(polygonCount / 20));
+
+			button.disabled = isDisabled;
+
+			if (isDisabled && now < disabledUntil && !isPaused) {
+				const progress = 100 - ((disabledUntil - now) / (getCooldownDuration() * 1000)) * 100;
+				button.style.setProperty('--progress', `${progress}%`);
+			} else {
+				button.style.setProperty('--progress', '0%');
+			}
 
 			if (difficultyLevel === 'medium') {
-				hintButton.textContent = `Hint (${Math.floor(polygonCount / 20) - hintCount} left)`;
-				nextNumberButton.textContent = `Next Number (${Math.floor(polygonCount / 20) - nextNumberCount} left)`;
+				button.textContent = `${buttonText} (${Math.floor(polygonCount / 20) - count} left)`;
 			} else {
-				hintButton.textContent = 'Hint';
-				nextNumberButton.textContent = 'Next Number';
+				button.textContent = buttonText;
 			}
+		}
+
+		function getCooldownDuration(remainingNumbers) {
+			if (remainingNumbers <= 20) return 5;
+			if (remainingNumbers <= 30) return 10;
+			if (remainingNumbers <= 40) return 20;
+			return 30;
+		}
+
+		function startCooldown(buttonId) {
+			const now = Date.now();
+			const remainingNumbers = polygonCount - currentNumber + 1;
+			const cooldownDuration = getCooldownDuration(remainingNumbers) * 1000;
+			
+			if (buttonId === 'hint') {
+				hintDisabledUntil = now + cooldownDuration;
+				hintCount++;
+			} else if (buttonId === 'next-number-btn') {
+				nextNumberDisabledUntil = now + cooldownDuration;
+				nextNumberCount++;
+			}
+
+			updateButtonState();
+
+			const intervalId = setInterval(() => {
+				if (!isPaused) {
+					updateButtonState();
+					if (Date.now() >= (buttonId === 'hint' ? hintDisabledUntil : nextNumberDisabledUntil)) {
+						clearInterval(intervalId);
+						updateButtonState();
+					}
+				}
+			}, 100);
+		}
+
+		function findBestPosition(polygon, centroid, imageSize) {
+			const [cx, cy] = centroid;
+			const padding = imageSize / 2;
+			
+			if (d3.polygonContains(polygon, [cx, cy])) {
+				// Check if the centroid is far enough from the edges
+				if (isPointValid(polygon, cx, cy, padding)) {
+					return [cx, cy];
+				}
+			}
+			
+			// If centroid is not suitable, try to find a better position
+			const [minX, minY, maxX, maxY] = getBoundingBox(polygon);
+			const stepX = (maxX - minX) / 5;
+			const stepY = (maxY - minY) / 5;
+			
+			for (let x = minX + padding; x <= maxX - padding; x += stepX) {
+				for (let y = minY + padding; y <= maxY - padding; y += stepY) {
+					if (d3.polygonContains(polygon, [x, y]) && isPointValid(polygon, x, y, padding)) {
+						return [x, y];
+					}
+				}
+			}
+			
+			// If no suitable position found, return the centroid as a fallback
+			return centroid;
+		}
+
+		function isPointValid(polygon, x, y, padding) {
+			return polygon.every(point => 
+				Math.hypot(point[0] - x, point[1] - y) >= padding
+			);
 		}
 
 		function createPolygons(gameArea) {
@@ -374,7 +518,7 @@
 			const delaunay = d3.Delaunay.from(points);
 			const voronoi = delaunay.voronoi([0, 0, SVG_WIDTH, SVG_HEIGHT]);
 
-			const colors = d3.schemeCategory10;
+			const colors = getRandomColors(polygonCount);
 
 			const polygons = gameArea.selectAll("g")
 				.data(points)
@@ -384,7 +528,7 @@
 
 			polygons.append("path")
 				.attr("d", (d, i) => voronoi.renderCell(i))
-				.attr("fill", (d, i) => colors[i % colors.length])
+				.attr("fill", (d, i) => colors[i])
 				.attr("stroke", "#fff")
 				.attr("class", "polygon");
 
@@ -396,10 +540,10 @@
 				const size = Math.min(maxX - minX, maxY - minY);
 				const imageSize = Math.max(Math.min(size / 2, 100), 20);
 
-				const centerX = (minX + maxX) / 2;
-				const centerY = (minY + maxY) / 2;
+				const centroid = d3.polygonCentroid(cell);
+				let [centerX, centerY] = findBestPosition(cell, centroid, imageSize);
 
-				const imageHref = createNumberImage(i + 1, getContrastColor(colors[i % colors.length]), imageSize);
+				const imageHref = createNumberImage(i + 1, getContrastColor(colors[i]), imageSize);
 
 				d3.select(this).append("image")
 					.attr("x", centerX - imageSize / 2)
@@ -435,14 +579,14 @@
 				currentNumber++;
 
 				if (currentNumber > polygonCount) {
-					endGame(true);
+					handleEndGame(true);
 				} else {
 					updateButtonState();
 				}
 			} else {
 				flashPolygon(clickedGroup.select("path"), "red", 300);
 				if (difficultyLevel === 'iron-man') {
-					endGame(false, true);
+					handleEndGame(false, true);
 				}
 			}
 		}
@@ -464,7 +608,7 @@
 					timerElement.textContent = `Time: ${formatTime(totalTime)}`;
 
 					if (totalTime >= TIME_LIMIT / 1000) {
-						endGame(false);
+						handleEndGame(false);
 					}
 				}
 			}, 1000);
@@ -473,14 +617,52 @@
 		function startTimeout() {
 			timeoutId = setTimeout(() => {
 				if (!isPaused) {
-					endGame(false);
+					handleEndGame(false);
 				}
 			}, TIME_LIMIT);
 		}
+		
+		function handleEndGame(completed, ironManFail = false) {
+			clearInterval(timerInterval);
+			clearTimeout(timeoutId);
+			const elapsedTime = Math.floor((Date.now() - startTime - totalPausedTime) / 1000);
+			const finalTime = elapsedTime;
+			let message = completed
+				? `Congratulations! You completed the challenge in ${formatTime(finalTime)}.`
+				: ironManFail
+					? "Game Over! You clicked the wrong number in Iron Man mode."
+					: "Sorry, you have run out of time.";
+
+			const popup = document.getElementById('fullscreen-popup');
+			const content = document.getElementById('fullscreen-popup-content');
+			
+			if (completed || (difficultyLevel !== 'iron-man' && !ironManFail)) {
+				const leaderboardPosition = getLeaderboardPosition(finalTime);
+				if (leaderboardPosition <= 5) {
+					disableGameControls();
+					showNamePrompt((playerName) => {
+						if (playerName) {
+							updateLeaderboard(playerName, finalTime);
+							message += ` You've reached position ${leaderboardPosition} on the leaderboard!`;
+						} else {
+							message += " You chose not to enter your name for the leaderboard.";
+						}
+						showEndGameMessage(message, popup, content);
+					});
+				} else {
+					if (completed) {
+						message += " Unfortunately, you didn't make it to the leaderboard. Try again next time!";
+					}
+					showEndGameMessage(message, popup, content);
+				}
+			} else {
+				showEndGameMessage(message, popup, content);
+			}
+
+			resetTimer();
+		}
 
 		function endGame(completed, ironManFail = false) {
-			if (isPaused) return;
-
 			clearInterval(timerInterval);
 			clearTimeout(timeoutId);
 			const elapsedTime = Math.floor((Date.now() - startTime - totalPausedTime) / 1000);
@@ -494,27 +676,129 @@
 			if (completed || (difficultyLevel !== 'iron-man' && !ironManFail)) {
 				const leaderboardPosition = getLeaderboardPosition(finalTime);
 				if (leaderboardPosition <= 5) {
-					const playerName = prompt("You made it to the leaderboard! Enter your name:");
-					updateLeaderboard(playerName, finalTime);
-					message += ` You've reached position ${leaderboardPosition} on the leaderboard!`;
-				} else if (completed) {
-					message += " Unfortunately, you didn't make it to the leaderboard. Try again next time!";
+					showNamePrompt((playerName) => {
+						if (playerName) {
+							updateLeaderboard(playerName, finalTime);
+							message += ` You've reached position ${leaderboardPosition} on the leaderboard!`;
+						} else {
+							message += " You chose not to enter your name for the leaderboard.";
+						}
+						showFinalMessage(message);
+					});
+				} else {
+					if (completed) {
+						message += " Unfortunately, you didn't make it to the leaderboard. Try again next time!";
+					}
+					showFinalMessage(message);
 				}
+			} else {
+				showFinalMessage(message);
 			}
 
 			resetTimer();
-
-			const messageElement = document.getElementById('message');
-			const messageOverlay = document.getElementById('message-overlay');
-			messageElement.innerHTML = message + '<br><button id="restart-button">Restart</button>';
-			messageElement.style.display = 'block';
-			messageOverlay.style.display = 'block';
+		}
+		
+		
+		function showEndGameMessage(message, popup, content) {
+			content.innerHTML = `
+				<h2>Game Over</h2>
+				<p>${message}</p>
+				<button id="restart-button">Restart</button>
+				<button id="close-popup-button">Close</button>
+			`;
+			
+			popup.style.display = 'flex';
+			
+			if (document.fullscreenElement) {
+				document.fullscreenElement.appendChild(popup);
+			} else {
+				document.body.appendChild(popup);
+			}
 
 			document.getElementById('restart-button').addEventListener('click', () => {
-				messageElement.style.display = 'none';
-				messageOverlay.style.display = 'none';
+				popup.style.display = 'none';
 				initGame();
 			});
+
+			document.getElementById('close-popup-button').addEventListener('click', () => {
+				popup.style.display = 'none';
+			});
+		}
+		
+		function showNamePrompt(callback) {
+			const overlay = document.createElement('div');
+			overlay.id = 'name-prompt-overlay';
+			overlay.style.position = 'fixed';
+			overlay.style.top = '0';
+			overlay.style.left = '0';
+			overlay.style.width = '100%';
+			overlay.style.height = '100%';
+			overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+			overlay.style.display = 'flex';
+			overlay.style.justifyContent = 'center';
+			overlay.style.alignItems = 'center';
+			overlay.style.zIndex = '10000';
+
+			const dialog = document.createElement('div');
+			dialog.style.backgroundColor = 'white';
+			dialog.style.padding = '20px';
+			dialog.style.borderRadius = '5px';
+			dialog.style.textAlign = 'center';
+
+			const input = document.createElement('input');
+			input.type = 'text';
+			input.placeholder = 'Enter your name';
+			input.style.marginBottom = '10px';
+			input.style.width = '100%';
+
+			const submitButton = document.createElement('button');
+			submitButton.textContent = 'Submit';
+			submitButton.style.marginRight = '10px';
+
+			const cancelButton = document.createElement('button');
+			cancelButton.textContent = 'Cancel';
+
+			dialog.appendChild(input);
+			dialog.appendChild(submitButton);
+			dialog.appendChild(cancelButton);
+			overlay.appendChild(dialog);
+
+			if (document.fullscreenElement) {
+				document.fullscreenElement.appendChild(overlay);
+			} else {
+				document.body.appendChild(overlay);
+			}
+
+			submitButton.onclick = () => {
+				const name = input.value.trim();
+				overlay.remove();
+				callback(name || null);
+			};
+
+			cancelButton.onclick = () => {
+				overlay.remove();
+				callback(null);
+			};
+
+			input.focus();
+		}
+		
+		function disableGameControls() {
+			clearInterval(timerInterval);
+			document.getElementById('hint').disabled = true;
+			document.getElementById('next-number-btn').disabled = true;
+			document.getElementById('pause-resume').disabled = true;
+		}
+
+		function updateNamePromptPosition() {
+			const overlay = document.getElementById('name-prompt-overlay');
+			if (overlay) {
+				if (document.fullscreenElement) {
+					document.fullscreenElement.appendChild(overlay);
+				} else {
+					document.body.appendChild(overlay);
+				}
+			}
 		}
 
 		function getLeaderboardPosition(time) {
@@ -546,30 +830,18 @@
 		function showHint() {
 			if (isPaused || document.getElementById('hint').disabled) return;
 			
-			const now = Date.now();
-			const remainingNumbers = polygonCount - currentNumber + 1;
-			const disableDuration = Math.min(30, Math.max(5, Math.floor(remainingNumbers / 10) * 10)) * 1000;
-			
-			hintDisabledUntil = now + disableDuration;
-			hintCount++;
+			startCooldown('hint');
 			
 			const nextPolygon = d3.select("#game-area").selectAll("path").filter((d, i) => i + 1 === currentNumber);
 			if (!nextPolygon.empty()) {
 				flashPolygon(nextPolygon, "green", 2000);
 			}
-			
-			updateButtonState();
 		}
 
 		function showNextNumber() {
 			if (isPaused || document.getElementById('next-number-btn').disabled) return;
 			
-			const now = Date.now();
-			const remainingNumbers = polygonCount - currentNumber + 1;
-			const disableDuration = Math.min(30, Math.max(5, Math.floor(remainingNumbers / 10) * 10)) * 1000;
-			
-			nextNumberDisabledUntil = now + disableDuration;
-			nextNumberCount++;
+			startCooldown('next-number-btn');
 			
 			const nextNumberElement = document.getElementById('next-number');
 			nextNumberElement.textContent = `Next number: ${currentNumber}`;
@@ -577,8 +849,6 @@
 			setTimeout(() => {
 				nextNumberElement.style.display = 'none';
 			}, 2000);
-			
-			updateButtonState();
 		}
 
 		function togglePause() {
@@ -600,14 +870,24 @@
 				timeoutId = setTimeout(() => endGame(false), remainingTime);
 				pauseOverlay.style.display = 'none';
 			}
+			
+			updateButtonState();
 		}
 
 		function showRules() {
 			if (!isPaused) {
 				togglePause();
 			}
-			document.getElementById('rules-overlay').style.display = 'block';
-			document.getElementById('rules-popup').style.display = 'block';
+			const rulesOverlay = document.getElementById('rules-overlay');
+			const rulesPopup = document.getElementById('rules-popup');
+			rulesOverlay.style.display = 'block';
+			rulesPopup.style.display = 'block';
+
+			// Ensure visibility in fullscreen
+			if (document.fullscreenElement) {
+				document.fullscreenElement.appendChild(rulesOverlay);
+				document.fullscreenElement.appendChild(rulesPopup);
+			}
 		}
 
 		function closeRules() {
@@ -626,7 +906,13 @@
 		function adjustContainerSize() {
 			const container = document.getElementById('game-area-container');
 			const gameArea = document.getElementById('game-area');
-			const maxSize = Math.min(window.innerWidth, window.innerHeight) * 0.9;
+			let maxSize;
+			
+			if (document.fullscreenElement) {
+				maxSize = Math.min(window.innerWidth, window.innerHeight);
+			} else {
+				maxSize = Math.min(window.innerWidth, window.innerHeight) * 0.9;
+			}
 			
 			container.style.width = `${maxSize}px`;
 			container.style.height = `${maxSize}px`;
@@ -634,9 +920,82 @@
 			gameArea.style.width = '100%';
 			gameArea.style.height = '100%';
 		}
+		
+		function toggleFullScreen() {
+			const gameContainer = document.getElementById('game-container');
+			const fullscreenButton = document.getElementById('fullscreen');
+			
+			if (!document.fullscreenElement) {
+				if (gameContainer.requestFullscreen) {
+					gameContainer.requestFullscreen();
+				} else if (gameContainer.mozRequestFullScreen) { // Firefox
+					gameContainer.mozRequestFullScreen();
+				} else if (gameContainer.webkitRequestFullscreen) { // Chrome, Safari and Opera
+					gameContainer.webkitRequestFullscreen();
+				} else if (gameContainer.msRequestFullscreen) { // IE/Edge
+					gameContainer.msRequestFullscreen();
+				}
+				fullscreenButton.textContent = 'Exit Fullscreen';
+			} else {
+				if (document.exitFullscreen) {
+					document.exitFullscreen();
+				} else if (document.mozCancelFullScreen) { // Firefox
+					document.mozCancelFullScreen();
+				} else if (document.webkitExitFullscreen) { // Chrome, Safari and Opera
+					document.webkitExitFullscreen();
+				} else if (document.msExitFullscreen) { // IE/Edge
+					document.msExitFullscreen();
+				}
+				fullscreenButton.textContent = 'Fullscreen';
+			}
+		}
+
+		function handleFullscreenChange() {
+			const fullscreenButton = document.getElementById('fullscreen');
+			const popup = document.getElementById('fullscreen-popup');
+			const messageOverlay = document.getElementById('message-overlay');
+			const message = document.getElementById('message');
+			const rulesOverlay = document.getElementById('rules-overlay');
+			const rulesPopup = document.getElementById('rules-popup');
+			
+			if (document.fullscreenElement) {
+				fullscreenButton.textContent = 'Exit Fullscreen';
+				document.fullscreenElement.appendChild(popup);
+				document.fullscreenElement.appendChild(messageOverlay);
+				document.fullscreenElement.appendChild(message);
+				document.fullscreenElement.appendChild(rulesOverlay);
+				document.fullscreenElement.appendChild(rulesPopup);
+			} else {
+				fullscreenButton.textContent = 'Fullscreen';
+				document.body.appendChild(popup);
+				document.body.appendChild(messageOverlay);
+				document.body.appendChild(message);
+				document.body.appendChild(rulesOverlay);
+				document.body.appendChild(rulesPopup);
+			}
+			adjustContainerSize();
+		}
+		
+		function handleFullscreenExit() {
+			const gameContainer = document.getElementById('game-container');
+			const body = document.body;
+			
+			['fullscreen-popup', 'message', 'message-overlay', 'rules-popup', 'rules-overlay'].forEach(id => {
+				const element = document.getElementById(id);
+				if (element && element.parentElement !== body) {
+					body.appendChild(element);
+				}
+			});
+		}
 
 		function initializeGameAndListeners() {
 			initGame();
+			document.getElementById('fullscreen').addEventListener('click', toggleFullScreen);
+			document.addEventListener('fullscreenchange', handleFullscreenExit);
+			document.addEventListener('webkitfullscreenchange', handleFullscreenExit);
+			document.addEventListener('mozfullscreenchange', handleFullscreenExit);
+			document.addEventListener('MSFullscreenChange', handleFullscreenExit);
+			document.addEventListener('fullscreenchange', updateNamePromptPosition);
 			document.getElementById('restart').addEventListener('click', initGame);
 			document.getElementById('pause-resume').addEventListener('click', togglePause);
 			document.getElementById('hint').addEventListener('click', showHint);
@@ -652,8 +1011,12 @@
 				initGame();
 			});
 			document.addEventListener('keydown', (e) => {
-				if (e.key === 'Escape' && document.getElementById('rules-popup').style.display === 'block') {
-					closeRules();
+				if (e.key === 'Escape') {
+					if (document.getElementById('rules-popup').style.display === 'block') {
+						closeRules();
+					} else if (document.fullscreenElement) {
+						toggleFullScreen();
+					}
 				}
 			});
 			document.getElementById('message-overlay').addEventListener('click', (e) => {
